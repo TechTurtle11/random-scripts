@@ -4,24 +4,21 @@
 
 
 def next_month_value(prev, income, loan_rate, monthly_payment, threshold):
-
     if income < 28000:
         mandatory_payment = 0
     else:
-        mandatory_payment = get_mandatory_payment(income,threshold)/12
+        mandatory_payment = get_mandatory_payment(income, threshold) / 12
 
     if prev > 0:
-        prev = prev * (1 + ((loan_rate / 12)/100) )
-
+        prev = prev * (1 + ((loan_rate / 12) / 100))
 
     prev = prev - mandatory_payment - monthly_payment
-
     return prev
 
 
-def get_mandatory_payment(annual_income, threshold, percentage = 9):
+def get_mandatory_payment(annual_income, threshold, percentage=9):
     affected_amount = annual_income - threshold
-    return (percentage/100) * affected_amount
+    return (percentage / 100) * affected_amount
 
 
 def main():
