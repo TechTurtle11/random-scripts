@@ -172,7 +172,7 @@ def calc_loan_payed_off():
     current_earned = investment_growth
     print(f"Total investment growth after loan payoff: £{investment_growth:.2f}")
 
-    current_income = income * (1 + (income_growth_percent / 100)) ** (years + (remaining_months / 12))
+    current_income = income * (1 + (income_growth_percent / 100)) ** (months / 12)
     print(f"Current income after {years} years and {remaining_months} months: £{current_income:.2f}")
 
     after_30_years = calculate_opportunity_costs(date_payed_off, current_earned, current_income, investment_percentage, direct_debit_percentage, income_growth_percent, threshold, threshold_change_percent)
