@@ -139,9 +139,11 @@ def get_months_until_loan_payed_off(
         tuple[int, float]: (Months until payoff, total paid)
     """
     months = 0
-    total_payed = 25000
+    total_payed = 0
 
     while loan_value > 0:
+        if months % 6 == 0:
+            print(f"Month: {months}, Date: {current_date}, Loan Value: £{loan_value:.2f}, Total Payed: £{total_payed:.2f}")
         months += 1
         current_date += datetime.timedelta(days=365 // 12)
         if current_date > EXPIRY_DATE:
@@ -258,18 +260,18 @@ def calc_loan_payed_off():
     """
     current_date = datetime.datetime.now().date()
 
-    loan_value = 43050.33
-    income = 80000
+    loan_value = 33_444.68
+    income = 72500
     threshold = 28470
     current_income = take_home_pay(
         income, pension_percent=5, student_finance_threshold=threshold
     )  # Assuming 5% pension contribution
     print(f"Take Home Pay: £{current_income:.2f} (after tax and pension contributions)")
-    investment_percentage = (330 + 750 + 250) / (current_income / 12) * 100
-    direct_debit_percentage = (750) / (current_income / 12) * 100
-    annual_loan_interest_rate = 7.3
+    investment_percentage = (0) / (current_income / 12) * 100
+    direct_debit_percentage = (1750) / (current_income / 12) * 100
+    annual_loan_interest_rate = 7.8
     income_growth_percent = 3
-    threshold_change_percent = 3
+    threshold_change_percent = 0
 
     print(f"Loan Value: £{loan_value:.2f}")
     print(f"Income: £{income:.2f} (growing at {income_growth_percent}% annually)")
@@ -306,9 +308,11 @@ def calc_loan_payed_off():
         threshold_change_percent,
     )
 
+    current_investments = 35000 * (1 + (0.05 / 12)) ** months_until_payoff
+
     print(f"Expected date of loan payoff: {date_payed_off.strftime('%Y-%m-%d')}")
     print(f"Loan will be paid off in {years} years and {remaining_months} months. Total cost: £{cost:.2f}")
-    print(f"Total investments after loan payoff: £{investments_after_payed_off:.2f}")
+    print(f"Total investments after loan payoff: £{current_investments+investments_after_payed_off:.2f}")
 
     current_earned = investments_after_payed_off
     current_income = income * (1 + (income_growth_percent / 100)) ** (months_until_payoff / 12)

@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f4f6f1" />
+  <title>Ledger — personal balance sheet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      font-family: 'DM Sans', sans-serif;
+      color: #172822;
+      background: #f4f6f1;
+      font-synthesis: none;
+      --ink: #172822;
+      --muted: #75827b;
+      --line: #e7ebe4;
+      --paper: #fff;
+      --canvas: #f4f6f1;
+      --green: #287655;
+      --green-dark: #154e39;
+      --lime: #c8ef79;
+      --coral: #e4856a;
+      --blue: #7396cf;
+      --gold: #d8b65e;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .app { min-height: 100vh; }
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; z-index: 2; display: flex; flex-direction: column;
+      width: 230px; padding: 25px 17px 18px; background: #fff; border-right: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 3px 8px 32px; font: 800 18px Manrope, sans-serif; letter-spacing: .2px; }
+    .brand-mark { display: grid; width: 31px; height: 31px; place-items: center; border-radius: 9px; background: var(--green-dark); color: var(--lime); }
+    .brand-mark svg { width: 19px; height: 19px; }
+    .nav-label { padding: 0 10px 9px; color: #9aa49c; font: 500 10px 'DM Mono', monospace; letter-spacing: 1px; text-transform: uppercase; }
+    .nav { display: grid; gap: 4px; }
+    .nav button { display: flex; align-items: center; gap: 11px; width: 100%; padding: 11px 11px; color: #64736b; background: transparent; border: 0; border-radius: 7px; text-align: left; font-size: 13px; font-weight: 600; }
+    .nav button:hover { background: #f5f7f3; color: var(--ink); }
+    .nav button.active { background: #edf4ec; color: var(--green-dark); }
+    .nav-icon { width: 18px; text-align: center; font-size: 16px; }
+    .side-spacer { flex: 1; }
+    .privacy { margin: 12px 4px 13px; padding: 13px; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .privacy strong { display: block; margin-bottom: 4px; color: #40544a; font-size: 11px; }
+    .profile { display: flex; align-items: center; gap: 10px; padding: 13px 5px 0; border-top: 1px solid var(--line); }
+    .avatar { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 50%; background: #e9eddd; color: #50654e; font-size: 12px; font-weight: 700; }
+    .profile-name { font-size: 12px; font-weight: 700; }
+    .profile-caption { margin-top: 2px; color: var(--muted); font-size: 10px; }
+    main { max-width: 1500px; min-height: 100vh; margin-left: 230px; padding: 29px clamp(22px, 4vw, 58px) 50px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 29px; }
+    .crumb { color: var(--muted); font-size: 12px; }
+    .crumb span { margin: 0 7px; color: #bdc5be; }
+    .top-actions { display: flex; align-items: center; gap: 11px; }
+    .saved-note { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
+    .saved-dot { width: 6px; height: 6px; border-radius: 50%; background: #62a176; }
+    .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 37px; padding: 0 13px; border: 1px solid #dfe5dd; border-radius: 6px; background: #fff; color: #34483d; font-size: 12px; font-weight: 700; }
+    .button:hover { border-color: #a8b8a9; background: #fafcf9; }
+    .button.primary { border-color: var(--green-dark); background: var(--green-dark); color: white; }
+    .button.primary:hover { background: #216246; }
+    .page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 21px; }
+    h1 { margin: 0; font: 700 26px Manrope, sans-serif; letter-spacing: 0; }
+    .subtitle { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+    .period { display: flex; align-items: center; gap: 8px; color: #87928b; font: 11px 'DM Mono', monospace; }
+    .period-dot { width: 7px; height: 7px; border-radius: 50%; background: #70a987; }
+    .demo-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 17px; padding: 10px 13px; border: 1px solid #e4e9d7; border-radius: 6px; background: #f0f3e8; color: #59634d; font-size: 11px; }
+    .demo-banner button { padding: 0; border: 0; background: transparent; color: #536c44; font-size: 11px; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .metric { position: relative; min-height: 115px; padding: 16px 17px 14px; overflow: hidden; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); }
+    .metric:after { position: absolute; top: 16px; right: 16px; width: 7px; height: 7px; border-radius: 50%; background: var(--metric-color, #8cad91); content: ''; }
+    .metric-label { color: #748078; font-size: 11px; font-weight: 600; }
+    .metric-value { margin-top: 13px; color: var(--ink); font: 700 22px Manrope, sans-serif; }
+    .metric-foot { margin-top: 4px; color: #89948d; font-size: 10px; }
+    .cashflow-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(260px, .75fr); gap: 14px; }
+    .cashflow-bar { display: flex; height: 12px; margin: 20px 18px 17px; overflow: hidden; border-radius: 5px; background: #edf0eb; }
+    .cashflow-segment { min-width: 2px; height: 100%; }
+    .cashflow-list { display: grid; padding: 0 18px 8px; }
+    .cashflow-row { display: grid; grid-template-columns: minmax(0, 1fr) 55px 110px 28px; align-items: center; gap: 10px; min-height: 48px; border-top: 1px solid #f0f2ef; }
+    .cashflow-label { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .cashflow-swatch { flex: none; width: 8px; height: 8px; border-radius: 3px; }
+    .cashflow-label input { width: 100%; min-width: 0; padding: 6px 0; border: 0; outline: 0; background: transparent; color: #405248; font-size: 11px; font-weight: 600; }
+    .cashflow-share { color: #89948d; text-align: right; font: 10px 'DM Mono', monospace; }
+    .cashflow-amount { display: flex; align-items: center; justify-content: flex-end; gap: 4px; color: #53665b; font: 10px 'DM Mono', monospace; }
+    .cashflow-amount input { width: 78px; padding: 6px 5px; border: 1px solid #e5eae3; border-radius: 4px; outline: 0; color: #34463c; text-align: right; font: 11px 'DM Mono', monospace; }
+    .cashflow-amount input:focus { border-color: #85a88d; box-shadow: 0 0 0 2px #eaf1e9; }
+    .remove-line { width: 26px; height: 26px; border: 0; border-radius: 4px; background: transparent; color: #9aa49d; font-size: 16px; }
+    .remove-line:hover { background: #f8eeeb; color: #a54f3c; }
+    .cashflow-total { display: flex; justify-content: space-between; padding: 13px 18px; border-top: 1px solid var(--line); color: #69776e; font-size: 11px; }
+    .cashflow-total strong { color: var(--ink); font: 600 12px 'DM Mono', monospace; }
+    .cashflow-leftover { margin: 0 18px 17px; padding: 12px 13px; border-radius: 5px; background: #eff4e9; color: #627159; font-size: 10px; }
+    .cashflow-leftover.over { background: #f8eeeb; color: #a54f3c; }
+    .cashflow-leftover strong { float: right; color: var(--green-dark); font: 600 12px 'DM Mono', monospace; }
+    .cashflow-leftover.over strong { color: #a54f3c; }
+    .cashflow-notes { display: grid; gap: 10px; margin: 0 18px 18px; padding-top: 13px; border-top: 1px solid #eff1ed; color: #78847c; font-size: 10px; line-height: 1.5; }
+    .cashflow-notes strong { color: #405248; }
+    .cashflow-add { margin: 0 18px 16px; }
+    .grid-main { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, .9fr); gap: 14px; margin-bottom: 14px; }
+    .panel { border: 1px solid var(--line); border-radius: 7px; background: var(--paper); }
+    .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 17px 18px 0; }
+    .panel-title { margin: 0; font-size: 13px; font-weight: 700; }
+    .panel-caption { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+    .small-select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; background: white; color: #54645b; font-size: 10px; }
+    .chart-wrap { padding: 12px 16px 5px; }
+    .chart { display: block; width: 100%; height: 191px; overflow: visible; }
+    .chart-grid { stroke: #edf0eb; stroke-width: 1; }
+    .chart-line { fill: none; stroke: var(--green); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .chart-area { fill: url(#areaFill); }
+    .chart-point { fill: white; stroke: var(--green); stroke-width: 2; }
+    .chart-label { fill: #97a198; font: 10px 'DM Mono', monospace; }
+    .chart-series { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .chart-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 0 19px 15px; color: #7d8981; font-size: 10px; }
+    .legend-dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--green); }
+    .projection-callout { display: flex; align-items: center; gap: 8px; padding: 11px 18px; border-top: 1px solid #eff1ed; color: #627067; font-size: 10px; }
+    .projection-callout strong { color: var(--green-dark); font-size: 11px; }
+    .forecast-table-wrap { overflow-x: auto; }
+    .forecast-table { width: 100%; min-width: 690px; border-collapse: collapse; text-align: right; }
+    .forecast-table th { padding: 11px 14px; color: #8b968e; font: 10px 'DM Mono', monospace; font-weight: 400; white-space: nowrap; }
+    .forecast-table td { padding: 10px 14px; border-top: 1px solid #f0f2ef; color: #53645a; font: 11px 'DM Mono', monospace; white-space: nowrap; }
+    .forecast-table th:first-child, .forecast-table td:first-child { text-align: left; }
+    .forecast-account { display: flex; align-items: center; gap: 8px; min-width: 220px; text-align: left; }
+    .forecast-account strong { display: block; overflow: hidden; max-width: 230px; color: #405248; font: 600 11px 'DM Sans', sans-serif; text-overflow: ellipsis; }
+    .forecast-account small { display: block; margin-top: 3px; color: #929d95; font: 9px 'DM Sans', sans-serif; }
+    .forecast-rate { display: inline-flex; align-items: center; gap: 4px; }
+    .forecast-rate input { width: 54px; padding: 5px 4px; border: 1px solid #e5eae3; border-radius: 4px; outline: 0; color: #34463c; text-align: right; font: 10px 'DM Mono', monospace; }
+    .forecast-rate input:focus { border-color: #85a88d; box-shadow: 0 0 0 2px #eaf1e9; }
+    .forecast-table tfoot td { border-top: 1px solid #dfe5dd; color: var(--ink); font-weight: 600; }
+    .forecast-note { padding: 11px 15px; border-top: 1px solid #eff1ed; color: #7d8981; font-size: 10px; line-height: 1.5; }
+    .alloc-list { display: grid; gap: 17px; padding: 18px; }
+    .alloc-top { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+    .alloc-name { display: flex; align-items: center; gap: 8px; color: #405248; font-size: 11px; font-weight: 600; }
+    .alloc-value { color: #5b6961; font: 11px 'DM Mono', monospace; }
+    .alloc-track { height: 6px; overflow: hidden; border-radius: 4px; background: #f0f2ef; }
+    .alloc-fill { height: 100%; border-radius: inherit; }
+    .alloc-foot { display: flex; justify-content: space-between; margin-top: 5px; color: #99a29c; font-size: 9px; }
+    .goal-strip { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: center; padding: 18px; }
+    .goal-name { display: flex; align-items: center; gap: 10px; }
+    .goal-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 7px; background: #edf3df; color: #587b39; font-size: 16px; }
+    .goal-name strong { display: block; font-size: 12px; }
+    .goal-name span { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .goal-amount { text-align: right; font: 600 13px 'DM Mono', monospace; }
+    .goal-amount span { display: block; margin-top: 3px; color: var(--muted); font: 10px 'DM Sans', sans-serif; }
+    .goal-progress { grid-column: 1 / -1; height: 6px; margin-top: -9px; overflow: hidden; border-radius: 4px; background: #edf0e9; }
+    .goal-progress div { height: 100%; border-radius: inherit; background: #8bab65; }
+    .section-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 26px 0 10px; }
+    .section-row h2 { margin: 0; font: 700 15px Manrope, sans-serif; }
+    .text-button { padding: 5px 0; border: 0; background: transparent; color: var(--green); font-size: 11px; font-weight: 700; }
+    .account-list { display: grid; }
+    .account-row { display: grid; grid-template-columns: minmax(130px, 1.6fr) minmax(90px, 1fr) minmax(110px, 1fr) auto; align-items: center; gap: 12px; padding: 13px 17px; border-top: 1px solid #f0f2ef; }
+    .account-row:first-child { border-top: 0; }
+    .account-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .account-icon { display: grid; flex: none; width: 29px; height: 29px; place-items: center; border-radius: 6px; background: var(--icon-bg); color: var(--icon-color); font-size: 12px; font-weight: 700; }
+    .account-name strong { display: block; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .account-name span { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; }
+    .row-label { color: #909a93; font-size: 10px; }
+    .row-value { margin-top: 3px; color: #34463c; font: 11px 'DM Mono', monospace; }
+    .row-action { padding: 5px 8px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: #596b60; font-size: 10px; font-weight: 600; }
+    .account-empty { padding: 25px; color: var(--muted); text-align: center; font-size: 12px; }
+    .asset-summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 4px 0 17px; }
+    .asset-summary .metric { min-height: 95px; }
+    .asset-summary .metric-value { font-size: 18px; }
+    .goal-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, .8fr); gap: 14px; }
+    .goal-chart-stat { padding: 20px 18px 15px; }
+    .goal-chart-stat .big-number { margin-top: 20px; font: 700 30px Manrope, sans-serif; }
+    .goal-chart-stat .big-caption { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .goal-form { display: grid; gap: 14px; padding: 17px 18px; }
+    .field { display: grid; gap: 6px; }
+    .field label { color: #69776e; font-size: 10px; font-weight: 600; }
+    .field input, .field select { width: 100%; min-height: 37px; padding: 8px 10px; border: 1px solid #dfe5dd; border-radius: 5px; outline: 0; background: #fff; color: var(--ink); font: 12px 'DM Mono', monospace; }
+    .field input:focus, .field select:focus { border-color: #85a88d; box-shadow: 0 0 0 3px #eaf1e9; }
+    .field-note { color: #97a099; font-size: 9px; line-height: 1.4; }
+    .goal-insight { margin: 0 18px 18px; padding: 12px; border-radius: 5px; background: #f1f5ec; color: #627159; font-size: 10px; line-height: 1.5; }
+    .overlay { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 20px; background: rgb(19 35 28 / 42%); }
+    .modal { width: min(100%, 440px); max-height: calc(100vh - 40px); overflow: auto; border: 1px solid var(--line); border-radius: 9px; background: white; box-shadow: 0 20px 60px rgb(19 35 28 / 18%); }
+    .modal-head { display: flex; align-items: flex-start; justify-content: space-between; padding: 19px 20px 15px; border-bottom: 1px solid #edf0eb; }
+    .modal-head h2 { margin: 0; font: 700 16px Manrope, sans-serif; }
+    .modal-head p { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+    .close-button { width: 28px; height: 28px; border: 0; border-radius: 5px; background: #f4f6f2; color: #66736b; font-size: 17px; }
+    .modal-body { display: grid; gap: 13px; padding: 17px 20px; }
+    .modal-footer { display: flex; justify-content: space-between; gap: 10px; padding: 13px 20px 18px; border-top: 1px solid #edf0eb; }
+    .modal-actions { display: flex; gap: 8px; margin-left: auto; }
+    .button.danger { border-color: #f0d8d1; color: #a54f3c; }
+    .mobile-nav { display: none; }
+    @media (max-width: 1050px) {
+      .sidebar { width: 198px; }
+      main { margin-left: 198px; padding-right: 27px; padding-left: 27px; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-main { grid-template-columns: minmax(0, 1.3fr) minmax(240px, .8fr); }
+    }
+    @media (max-width: 760px) {
+      .sidebar { position: sticky; inset: 0 0 auto; flex-direction: row; align-items: center; width: auto; height: 58px; padding: 0 16px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .brand { padding: 0; font-size: 16px; }
+      .brand-mark { width: 29px; height: 29px; }
+      .sidebar .nav-label, .sidebar .nav, .side-spacer, .privacy, .profile { display: none; }
+      .mobile-nav { display: flex; gap: 3px; margin-left: auto; }
+      .mobile-nav button { padding: 8px 9px; border: 0; border-radius: 5px; background: transparent; color: #718077; font-size: 11px; font-weight: 600; }
+      .mobile-nav button.active { background: #edf4ec; color: var(--green-dark); }
+      main { margin-left: 0; padding: 20px 16px 35px; }
+      .topbar { margin-bottom: 19px; }
+      .saved-note { display: none; }
+      .page-heading { align-items: flex-start; }
+      h1 { font-size: 22px; }
+      .grid-main, .goal-layout { grid-template-columns: 1fr; }
+      .metrics { gap: 8px; }
+      .metric { min-height: 102px; padding: 13px; }
+      .metric-value { font-size: 19px; }
+      .metric-foot { font-size: 9px; }
+      .asset-summary { gap: 8px; }
+      .asset-summary .metric { padding: 12px 10px; }
+      .asset-summary .metric-value { font-size: 16px; }
+    }
+    @media (max-width: 460px) {
+      .sidebar { padding: 0 11px; }
+      .brand { gap: 7px; font-size: 14px; }
+      .mobile-nav { gap: 0; }
+      .mobile-nav button { padding: 7px 6px; font-size: 10px; }
+      main { padding-right: 12px; padding-left: 12px; }
+      .crumb { font-size: 10px; }
+      .top-actions { gap: 0; }
+      .top-actions .button { min-height: 33px; padding: 0 9px; font-size: 10px; }
+      .period { font-size: 9px; }
+      .account-row { grid-template-columns: minmax(120px, 1.5fr) minmax(75px, 1fr) auto; gap: 7px; padding: 12px 10px; }
+      .hide-mobile { display: none; }
+      .row-action { padding: 5px 6px; }
+      .chart { height: 170px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script type="text/babel" data-presets="env,react">
+    const { useEffect, useMemo, useState } = React;
+    const STORAGE_KEY = 'ledger-assets-v2';
+    const categoryStyles = {
+      'Cash': { color: '#609170', bg: '#eaf2ec', icon: 'C' },
+      'Money market': { color: '#488a91', bg: '#eaf3f3', icon: 'M' },
+      'Stocks & shares': { color: '#6685b8', bg: '#edf1f8', icon: 'S' },
+      'Pension': { color: '#a27c39', bg: '#f6f0e3', icon: 'P' },
+      'LISA': { color: '#8b7caa', bg: '#f0eef5', icon: 'L' },
+      'Property': { color: '#8b7caa', bg: '#f0eef5', icon: 'H' },
+      'Other': { color: '#7c8982', bg: '#eef1ef', icon: 'O' },
+      'Student loan': { color: '#cb7861', bg: '#f8eeeb', icon: 'L' },
+      'Stoozing': { color: '#cb7861', bg: '#f8eeeb', icon: 'S' },
+      'Other debt': { color: '#cb7861', bg: '#f8eeeb', icon: 'D' },
+    };
+    const forecastColors = ['#609170', '#6685b8', '#c18b4c', '#8b7caa', '#4c9292', '#cb7861', '#6d8294', '#a27c39'];
+    const startingData = {
+      schemaVersion: 3,
+      assets: [
+        { id: 'pension', name: 'Pension · 15% total contributions', category: 'Pension', value: 27500, monthly: 1000, rate: 0 },
+        { id: 'isa-equities', name: 'S&S ISA · equities', category: 'Stocks & shares', value: 17076, monthly: 500, rate: 0 },
+        { id: 'isa-money-market', name: 'S&S ISA · money-market fund', category: 'Money market', value: 12500, monthly: 0, rate: 0 },
+        { id: 'cash-isa', name: 'Cash ISA · includes £5,500 stoozing funds', category: 'Cash', value: 14571, monthly: 500, rate: 4.5 },
+        { id: 'lisa', name: 'LISA · includes government bonus', category: 'LISA', value: 12800, monthly: 0, rate: 0 },
+        { id: 'bae', name: 'BAE shares', category: 'Stocks & shares', value: 1800, monthly: 0, rate: 0 },
+        { id: 'premium-bonds', name: 'Premium Bonds', category: 'Cash', value: 1000, monthly: 0, rate: 0 },
+      ],
+      debts: [
+        { id: 'loan', name: 'Student loan · Plan 2', category: 'Student loan', note: '£380 payroll + £750 voluntary', value: 19448.81, monthly: 1130, rate: null },
+        { id: 'stoozing', name: 'Stoozing · credit cards', category: 'Stoozing', value: 5500, monthly: 0, rate: null },
+      ],
+      goal: { name: 'House deposit', target: 60000, saved: 35371, monthly: 1000, years: 5, rate: 0 },
+      cashflow: {
+        grossAnnual: 80000,
+        takeHome: 4050,
+        allocations: [
+          { id: 'student-overpayment', label: 'Student loan overpayment', amount: 750, color: '#df9279' },
+          { id: 'rent-bills', label: 'Rent + bills', amount: 1171, color: '#609170' },
+          { id: 'stocks-savings', label: 'S&S ISA', amount: 500, color: '#7396cf' },
+          { id: 'cash-savings', label: 'Cash savings', amount: 500, color: '#d2b35d' },
+          { id: 'misc-savings', label: 'Misc / saving', amount: 500, color: '#9a87b4' },
+        ],
+      },
+    };
+    const currency = (value, digits = 0) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: digits, minimumFractionDigits: digits }).format(Number(value) || 0);
+    const numberField = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
+    function mergeStoredItems(defaults, saved) {
+      return (saved || defaults).map(item => ({
+        ...defaults.find(defaultItem => defaultItem.id === item.id),
+        ...item,
+      }));
+    }
+    function loadData() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (!stored) return startingData;
+        const saved = JSON.parse(stored);
+        const assets = mergeStoredItems(startingData.assets, saved.assets);
+        if (numberField(saved.schemaVersion) < 3) {
+          const cashIsa = assets.find(item => item.id === 'cash-isa');
+          if (cashIsa) cashIsa.monthly = 500;
+        }
+        return {
+          ...startingData,
+          ...saved,
+          schemaVersion: 3,
+          assets,
+          debts: mergeStoredItems(startingData.debts, saved.debts),
+          goal: { ...startingData.goal, ...saved.goal },
+        };
+      } catch { return startingData; }
+    }
+    function compound(value, monthly, annualRate, months) {
+      const rate = Math.max(-0.99, Number(annualRate) || 0) / 1200;
+      let balance = Math.max(0, Number(value) || 0);
+      for (let i = 0; i < months; i += 1) balance = Math.max(0, balance * (1 + rate) + (Number(monthly) || 0));
+      return balance;
+    }
+    function monthsToPayoff(debt) {
+      if (debt.rate === null || debt.rate === '') return null;
+      let balance = Number(debt.value) || 0;
+      const payment = Number(debt.monthly) || 0;
+      const rate = Math.max(0, Number(debt.rate) || 0) / 1200;
+      if (balance <= 0) return 0;
+      if (payment <= balance * rate) return null;
+      for (let months = 1; months <= 1200; months += 1) {
+        balance = Math.max(0, balance * (1 + rate) - payment);
+        if (balance <= 0) return months;
+      }
+      return null;
+    }
+    function monthsToGoal(goal) {
+      if (numberField(goal.saved) >= numberField(goal.target)) return 0;
+      for (let month = 1; month <= 1200; month += 1) {
+        if (compound(goal.saved, goal.monthly, goal.rate, month) >= goal.target) return month;
+      }
+      return null;
+    }
+    function App() {
+      const [data, setData] = useState(loadData);
+      const [page, setPage] = useState('Overview');
+      const [editor, setEditor] = useState(null);
+      const [draft, setDraft] = useState(null);
+      const [horizon, setHorizon] = useState(5);
+      useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }, [data]);
+
+      const totalAssets = data.assets.reduce((sum, item) => sum + numberField(item.value), 0);
+      const totalDebt = data.debts.reduce((sum, item) => sum + numberField(item.value), 0);
+      const netWorth = totalAssets - totalDebt;
+      const stoozingDebt = data.debts.filter(item => item.category === 'Stoozing').reduce((sum, item) => sum + numberField(item.value), 0);
+      const nonPensionAssets = data.assets.filter(item => item.category !== 'Pension').reduce((sum, item) => sum + numberField(item.value), 0);
+      const liquid = Math.max(0, nonPensionAssets - stoozingDebt);
+      const invested = data.assets.filter(item => item.category !== 'Cash').reduce((sum, item) => sum + numberField(item.value), 0);
+      const goalProjected = compound(data.goal.saved, data.goal.monthly, data.goal.rate, data.goal.years * 12);
+      const goalMonths = monthsToGoal(data.goal);
+      const yearsLabel = goalMonths === null ? 'Add a monthly amount to see your timeline' : goalMonths === 0 ? 'Already at your target' : `At this pace: about ${Math.floor(goalMonths / 12)}y ${goalMonths % 12}m`;
+      const projection = useMemo(() => Array.from({ length: horizon + 1 }, (_, year) => ({
+        year,
+        accounts: data.assets.map(item => ({ id: item.id, value: compound(item.value, item.monthly, item.rate, year * 12) })),
+        total: data.assets.reduce((sum, item) => sum + compound(item.value, item.monthly, item.rate, year * 12), 0),
+      })), [data.assets, horizon]);
+      const allocation = ['Cash', 'Money market', 'Stocks & shares', 'LISA', 'Pension', 'Property', 'Other'].map(category => ({
+        category,
+        value: data.assets.filter(item => item.category === category).reduce((sum, item) => sum + numberField(item.value), 0),
+      })).filter(item => item.value > 0);
+      const percent = Math.min(100, data.goal.target > 0 ? (data.goal.saved / data.goal.target) * 100 : 0);
+      const monthlyAllocated = data.cashflow.allocations.reduce((sum, item) => sum + numberField(item.amount), 0);
+      const monthlyUnassigned = numberField(data.cashflow.takeHome) - monthlyAllocated;
+      const cashflowScale = Math.max(1, numberField(data.cashflow.takeHome), monthlyAllocated);
+      function updateGoal(key, value) {
+        setData(current => ({ ...current, goal: { ...current.goal, [key]: value } }));
+      }
+      function updateAssetRate(id, rate) {
+        setData(current => ({ ...current, assets: current.assets.map(item => item.id === id ? { ...item, rate } : item) }));
+      }
+      function updateCashflow(key, value) {
+        setData(current => ({ ...current, cashflow: { ...current.cashflow, [key]: value } }));
+      }
+      function updateCashflowLine(id, key, value) {
+        setData(current => ({ ...current, cashflow: { ...current.cashflow, allocations: current.cashflow.allocations.map(item => item.id === id ? { ...item, [key]: value } : item) } }));
+      }
+      function addCashflowLine() {
+        updateCashflow('allocations', [...data.cashflow.allocations, { id: `flow-${Date.now()}`, label: 'New category', amount: 0, color: '#96a39b' }]);
+      }
+      function removeCashflowLine(id) {
+        updateCashflow('allocations', data.cashflow.allocations.filter(item => item.id !== id));
+      }
+      function openEditor(kind, item = null) {
+        const isDebt = kind === 'debt';
+        setEditor({ kind, id: item?.id ?? null });
+        setDraft(item ? { ...item } : {
+          id: `${kind}-${Date.now()}`, name: '', category: isDebt ? 'Other debt' : 'Cash', value: 0, monthly: 0, rate: isDebt ? null : 0,
+        });
+      }
+      function saveEditor(event) {
+        event.preventDefault();
+        const field = editor.kind === 'debt' ? 'debts' : 'assets';
+        setData(current => ({ ...current, [field]: editor.id ? current[field].map(item => item.id === editor.id ? draft : item) : [...current[field], draft] }));
+        setEditor(null);
+      }
+      function removeEditorItem() {
+        const field = editor.kind === 'debt' ? 'debts' : 'assets';
+        setData(current => ({ ...current, [field]: current[field].filter(item => item.id !== editor.id) }));
+        setEditor(null);
+      }
+      function Metric({ label, value, foot, color }) {
+        return <article className="metric" style={{ '--metric-color': color }}><div className="metric-label">{label}</div><div className="metric-value">{currency(value)}</div><div className="metric-foot">{foot}</div></article>;
+      }
+      function ProjectionChart() {
+        const width = 640, height = 180, left = 48, right = 12, top = 12, bottom = 26;
+        const maxValue = Math.max(1, ...projection.map(point => point.total)) * 1.08;
+        const xAt = index => left + index * ((width - left - right) / Math.max(1, horizon));
+        const yAt = value => top + (height - top - bottom) * (1 - value / maxValue);
+        const points = projection.map((point, index) => ({
+          x: xAt(index),
+          y: yAt(point.total),
+          ...point,
+        }));
+        const line = points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ');
+        const area = `${line} L ${points[points.length - 1].x} ${height - bottom} L ${points[0].x} ${height - bottom} Z`;
+        const series = data.assets.map((account, accountIndex) => ({
+          account,
+          color: forecastColors[accountIndex % forecastColors.length],
+          path: projection.map((point, index) => `${index ? 'L' : 'M'} ${xAt(index)} ${yAt(point.accounts.find(item => item.id === account.id)?.value || 0)}`).join(' '),
+        }));
+        return <div className="chart-wrap"><svg className="chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`Projected asset growth by account over ${horizon} years`} preserveAspectRatio="none">
+          <defs><linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#73a987" stopOpacity=".19" /><stop offset="100%" stopColor="#73a987" stopOpacity="0" /></linearGradient></defs>
+          {[0, 1, 2, 3].map(i => { const y = top + i * ((height - top - bottom) / 3); return <g key={i}><line className="chart-grid" x1={left} x2={width - right} y1={y} y2={y} /><text className="chart-label" x={left - 8} y={y + 3} textAnchor="end">{currency(maxValue * (1 - i / 3), 0).replace('.00', '')}</text></g>; })}
+          <path className="chart-area" d={area} />{series.map(item => <path key={item.account.id} className="chart-series" d={item.path} stroke={item.color}><title>{item.account.name}</title></path>)}<path className="chart-line" d={line} />
+          {points.map(point => <g key={point.year}><circle className="chart-point" cx={point.x} cy={point.y} r="3.5" /><text className="chart-label" x={point.x} y={height - 6} textAnchor="middle">{point.year === 0 ? 'Now' : `Yr ${point.year}`}</text></g>)}
+        </svg></div>;
+      }
+      function ForecastTable() {
+        const forecast = data.assets.map((account, index) => ({
+          account,
+          color: forecastColors[index % forecastColors.length],
+          projected: projection[horizon]?.accounts.find(item => item.id === account.id)?.value || 0,
+        }));
+        return <><div className="forecast-table-wrap"><table className="forecast-table"><thead><tr><th>Asset</th><th>Current</th><th>Monthly added</th><th>Annual return</th><th>In {horizon} years</th><th>Growth</th><th /></tr></thead>
+          <tbody>{forecast.map(({ account, color, projected }) => <tr key={account.id}><td><div className="forecast-account"><span className="cashflow-swatch" style={{ background: color }} /><span><strong>{account.name}</strong><small>{account.category}</small></span></div></td><td>{currency(account.value)}</td><td>{currency(account.monthly)}</td><td><label className="forecast-rate"><input aria-label={`${account.name} annual return assumption`} type="number" min="0" max="50" step="0.1" value={account.rate ?? 0} onChange={event => updateAssetRate(account.id, numberField(event.target.value))} /><span>%</span></label></td><td>{currency(projected)}</td><td>{currency(projected - numberField(account.value))}</td><td><button className="row-action" onClick={() => openEditor('asset', account)}>Edit</button></td></tr>)}</tbody>
+          <tfoot><tr><td>Total assets</td><td>{currency(totalAssets)}</td><td>{currency(data.assets.reduce((sum, item) => sum + numberField(item.monthly), 0))}</td><td>Varies</td><td>{currency(projection[horizon]?.total || 0)}</td><td>{currency((projection[horizon]?.total || 0) - totalAssets)}</td><td /></tr></tfoot>
+        </table></div><div className="forecast-note">Each line uses its current value, monthly contribution and annual return assumption. A 0% return means no rate was supplied; edit it above to explore a scenario. Projections exclude inflation, fees and tax.</div></>;
+      }
+      function GoalChart() {
+        const width = 600, height = 190, left = 45, right = 12, top = 10, bottom = 26;
+        const years = Math.max(1, Number(data.goal.years) || 1);
+        const values = Array.from({ length: years + 1 }, (_, year) => compound(data.goal.saved, data.goal.monthly, data.goal.rate, year * 12));
+        const maxValue = Math.max(1, data.goal.target * 1.1, ...values);
+        const points = values.map((value, year) => ({ x: left + year * ((width - left - right) / years), y: top + (height - top - bottom) * (1 - Math.min(value, maxValue) / maxValue), value, year }));
+        const line = points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ');
+        return <div className="chart-wrap"><svg className="chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="House deposit goal projection" preserveAspectRatio="none">
+          {[0, 1, 2, 3].map(i => { const y = top + i * ((height - top - bottom) / 3); return <g key={i}><line className="chart-grid" x1={left} x2={width - right} y1={y} y2={y} /><text className="chart-label" x={left - 8} y={y + 3} textAnchor="end">{currency(maxValue * (1 - i / 3))}</text></g>; })}
+          <line x1={left} x2={width - right} y1={top + (height - top - bottom) * (1 - data.goal.target / maxValue)} y2={top + (height - top - bottom) * (1 - data.goal.target / maxValue)} stroke="#d8b65e" strokeDasharray="4 4" />
+          <path className="chart-line" d={line} />{points.map(point => <g key={point.year}><circle className="chart-point" cx={point.x} cy={point.y} r="3.5" /><text className="chart-label" x={point.x} y={height - 6} textAnchor="middle">{point.year === 0 ? 'Now' : `Yr ${point.year}`}</text></g>)}
+        </svg></div>;
+      }
+      function AccountRow({ item, debt = false }) {
+        const style = categoryStyles[item.category] || categoryStyles.Other;
+        return <div className="account-row"><div className="account-name"><div className="account-icon" style={{ '--icon-bg': style.bg, '--icon-color': style.color }}>{style.icon}</div><div><strong>{item.name}</strong><span>{item.note || item.category}</span></div></div>
+          <div><div className="row-label">Current value</div><div className="row-value">{currency(item.value, 2)}</div></div>
+          <div className="hide-mobile"><div className="row-label">{debt ? 'Monthly payment' : 'Monthly added'}</div><div className="row-value">{currency(item.monthly)}</div></div>
+          <button className="row-action" onClick={() => openEditor(debt ? 'debt' : 'asset', item)}>Edit</button></div>;
+      }
+      function AccountList({ assets, debts }) {
+        if (!assets.length && !debts.length) return <div className="account-empty">No accounts yet. Add your first asset to get started.</div>;
+        return <div className="account-list">{assets.map(item => <AccountRow key={item.id} item={item} />)}{debts.map(item => <AccountRow key={item.id} item={item} debt />)}</div>;
+      }
+
+      return <div className="app">
+        <aside className="sidebar">
+          <div className="brand"><span className="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 18V9m5 9V5m5 13v-6m5 6V3" /></svg></span>ledger</div>
+          <div className="nav-label">Workspace</div>
+          <nav className="nav">{['Overview', 'Assets', 'Cash flow', 'Goals'].map((item, index) => <button key={item} className={page === item ? 'active' : ''} onClick={() => setPage(item)}><span className="nav-icon">{['◫', '◷', '↗', '◎'][index]}</span>{item}</button>)}</nav>
+          <div className="side-spacer" />
+          <div className="privacy"><strong>Your numbers stay yours</strong>Everything is stored in this browser. No bank connections, no account required.</div>
+          <div className="profile"><div className="avatar">Y</div><div><div className="profile-name">Your finances</div><div className="profile-caption">Personal workspace</div></div></div>
+        </aside>
+        <main>
+          <div className="topbar"><div className="crumb">Workspace <span>/</span> {page}</div><div className="top-actions"><div className="saved-note"><span className="saved-dot" /> Saved in this browser</div>{page !== 'Goals' && page !== 'Cash flow' && <button className="button primary" onClick={() => openEditor('asset')}><span aria-hidden="true">＋</span> Add asset</button>}</div></div>
+          <div className="mobile-nav">{['Overview', 'Assets', 'Cash flow', 'Goals'].map(item => <button key={item} className={page === item ? 'active' : ''} onClick={() => setPage(item)}>{item}</button>)}</div>
+          <div className="page-heading"><div><h1>{page === 'Overview' ? 'Your money, in one view' : page === 'Assets' ? 'Your accounts' : page === 'Cash flow' ? 'Where your pay goes' : 'Plans worth saving for'}</h1><p className="subtitle">{page === 'Overview' ? 'A clear picture of where you are and where you could be.' : page === 'Assets' ? 'Keep your pots, investments and balances together.' : page === 'Cash flow' ? 'Monthly allocations from your take-home pay.' : 'Turn the bigger things on your list into a plan.'}</p></div><div className="period"><span className="period-dot" /> As of 2 Oct 2026</div></div>
+
+          {page === 'Overview' && <>
+            <section className="metrics">
+              <Metric label="Net worth" value={netWorth} foot="Assets minus outstanding debt" color="#78a586" />
+              <Metric label="Total assets" value={totalAssets} foot={`${data.assets.length} pots across your accounts`} color="#88a5ce" />
+              <Metric label="Non-pension assets" value={liquid} foot="Cash, MMF, shares and LISA less stoozing" color="#d2b35d" />
+              <Metric label="Outstanding debt" value={totalDebt} foot={data.debts.length ? 'Including student loan' : 'No debts recorded'} color="#df9279" />
+            </section>
+            <section className="grid-main">
+              <article className="panel"><div className="panel-head"><div><h2 className="panel-title">Asset growth by account</h2><p className="panel-caption">Account contributions only; excludes the unassigned misc / saving amount</p></div><select className="small-select" aria-label="Projection horizon" value={horizon} onChange={event => setHorizon(Number(event.target.value))}>{[3, 5, 10, 15].map(year => <option key={year} value={year}>{year} years</option>)}</select></div><ProjectionChart /><div className="chart-legend">{data.assets.map((item, index) => <span key={item.id}><i className="legend-dot" style={{ background: forecastColors[index % forecastColors.length] }} />{item.name}</span>)}<span><i className="legend-dot" />Total assets</span></div><div className="projection-callout">Total in {horizon} years <strong>{currency(projection[projection.length - 1].total)}</strong></div></article>
+              <article className="panel"><div className="panel-head"><div><h2 className="panel-title">Where it sits</h2><p className="panel-caption">Asset mix by account type</p></div></div><div className="alloc-list">{allocation.length ? allocation.map(item => { const style = categoryStyles[item.category] || categoryStyles.Other; const share = totalAssets ? item.value / totalAssets * 100 : 0; return <div key={item.category}><div className="alloc-top"><span className="alloc-name"><i className="legend-dot" style={{ background: style.color }} />{item.category}</span><span className="alloc-value">{currency(item.value)}</span></div><div className="alloc-track"><div className="alloc-fill" style={{ width: `${share}%`, background: style.color }} /></div><div className="alloc-foot"><span>{Math.round(share)}% of assets</span><span>{data.assets.filter(account => account.category === item.category).length} {data.assets.filter(account => account.category === item.category).length === 1 ? 'account' : 'accounts'}</span></div></div>; }) : <div className="account-empty">Add an asset to see your mix.</div>}</div></article>
+            </section>
+            <div className="section-row"><h2>Per-asset forecast</h2><span className="subtitle">Assumptions update the chart immediately</span></div>
+            <article className="panel"><ForecastTable /></article>
+            <article className="panel"><div className="panel-head"><div><h2 className="panel-title">Next milestone</h2><p className="panel-caption">Your progress toward a bigger plan</p></div><button className="text-button" onClick={() => setPage('Goals')}>View goal →</button></div><div className="goal-strip"><div className="goal-name"><div className="goal-icon">⌂</div><div><strong>{data.goal.name}</strong><span>{yearsLabel}</span></div></div><div className="goal-amount">{currency(data.goal.saved)} <span>of {currency(data.goal.target)}</span></div><div className="goal-progress"><div style={{ width: `${percent}%` }} /></div></div></article>
+            <div className="section-row"><h2>Accounts at a glance</h2><button className="text-button" onClick={() => setPage('Assets')}>All accounts →</button></div>
+            <article className="panel"><AccountList assets={data.assets.slice(0, 3)} debts={data.debts.slice(0, 1)} /></article>
+          </>}
+
+          {page === 'Assets' && <>
+            <section className="asset-summary"><Metric label="Total assets" value={totalAssets} foot="Cash, investments and pension" color="#78a586" /><Metric label="Total liabilities" value={totalDebt} foot="Student loan and other debt" color="#df9279" /><Metric label="Net position" value={netWorth} foot="Assets less liabilities" color="#88a5ce" /></section>
+            <div className="section-row"><h2>Assets <span style={{ color: '#89948d', fontSize: 11, fontWeight: 500 }}>· {data.assets.length}</span></h2><button className="button primary" onClick={() => openEditor('asset')}>＋ Add asset</button></div>
+            <article className="panel"><AccountList assets={data.assets} debts={[]} /></article>
+            <div className="section-row"><h2>Liabilities <span style={{ color: '#89948d', fontSize: 11, fontWeight: 500 }}>· {data.debts.length}</span></h2><button className="button" onClick={() => openEditor('debt')}>＋ Add debt</button></div>
+            <article className="panel"><AccountList assets={[]} debts={data.debts} /></article>
+            {data.debts.map(debt => { const months = monthsToPayoff(debt); const estimate = debt.rate === null || debt.rate === '' ? 'interest rate not entered; payoff estimate omitted' : months === null ? 'payment does not currently exceed monthly interest' : `fixed-payment scenario: about ${Math.floor(months / 12)} years ${months % 12} months at the entered payment and rate`; const caveat = debt.category === 'Student loan' ? 'Plan 2 repayments are income-linked, so a fixed-payment estimate may differ.' : 'Uses a fixed payment and entered rate.'; return <p key={debt.id} className="subtitle" style={{ margin: '10px 2px' }}>{debt.name}: {estimate}. {caveat}</p>; })}
+          </>}
+
+          {page === 'Cash flow' && <>
+            <section className="metrics">
+              <Metric label="Annual gross salary" value={data.cashflow.grossAnnual} foot={`${currency(data.cashflow.grossAnnual / 12)} gross per month`} color="#7396cf" />
+              <Metric label="Monthly take-home" value={data.cashflow.takeHome} foot="Available after payroll deductions" color="#78a586" />
+              <Metric label="Monthly allocations" value={monthlyAllocated} foot={`${data.cashflow.takeHome ? (monthlyAllocated / data.cashflow.takeHome * 100).toFixed(1) : '0.0'}% of take-home`} color="#d2b35d" />
+              <Metric label={monthlyUnassigned < 0 ? 'Over take-home' : 'Unassigned'} value={monthlyUnassigned} foot="After the listed monthly amounts" color={monthlyUnassigned < 0 ? '#df9279' : '#9a87b4'} />
+            </section>
+            <section className="cashflow-grid">
+              <article className="panel">
+                <div className="panel-head"><div><h2 className="panel-title">Monthly breakdown</h2><p className="panel-caption">Edit a label or amount to update the budget.</p></div></div>
+                <div className="cashflow-bar" role="img" aria-label={`${currency(monthlyAllocated)} allocated from ${currency(data.cashflow.takeHome)} take-home`}>
+                  {data.cashflow.allocations.filter(item => numberField(item.amount) > 0).map(item => <span key={item.id} className="cashflow-segment" title={`${item.label}: ${currency(item.amount)}`} style={{ width: `${numberField(item.amount) / cashflowScale * 100}%`, background: item.color }} />)}
+                  {monthlyUnassigned > 0 && <span className="cashflow-segment" title={`Unassigned: ${currency(monthlyUnassigned)}`} style={{ width: `${monthlyUnassigned / cashflowScale * 100}%`, background: '#e7ebe4' }} />}
+                </div>
+                <div className="cashflow-list">{data.cashflow.allocations.map(item => <div className="cashflow-row" key={item.id}>
+                  <div className="cashflow-label"><span className="cashflow-swatch" style={{ background: item.color }} /><input aria-label={`${item.label} label`} value={item.label} onChange={event => updateCashflowLine(item.id, 'label', event.target.value)} /></div>
+                  <span className="cashflow-share">{data.cashflow.takeHome ? `${(numberField(item.amount) / data.cashflow.takeHome * 100).toFixed(1)}%` : '0.0%'}</span>
+                  <label className="cashflow-amount"><span>£</span><input aria-label={`${item.label} per month`} type="number" min="0" step="1" value={item.amount} onChange={event => updateCashflowLine(item.id, 'amount', numberField(event.target.value))} /></label>
+                  <button className="remove-line" title="Remove line" aria-label={`Remove ${item.label}`} onClick={() => removeCashflowLine(item.id)}>×</button>
+                </div>)}</div>
+                <button className="text-button cashflow-add" onClick={addCashflowLine}>＋ Add line</button>
+                <div className="cashflow-total"><span>Planned monthly allocations</span><strong>{currency(monthlyAllocated)}</strong></div>
+                <div className={`cashflow-leftover${monthlyUnassigned < 0 ? ' over' : ''}`}><strong>{currency(Math.abs(monthlyUnassigned))}{monthlyUnassigned < 0 ? ' over' : ''}</strong>{monthlyUnassigned < 0 ? 'Above take-home' : `${data.cashflow.takeHome ? (monthlyUnassigned / data.cashflow.takeHome * 100).toFixed(1) : '0.0'}% left unassigned`}</div>
+              </article>
+              <article className="panel">
+                <div className="panel-head"><div><h2 className="panel-title">Income basis</h2><p className="panel-caption">Your monthly budget starts here.</p></div></div>
+                <div className="goal-form">
+                  <div className="field"><label htmlFor="gross-annual">Annual gross salary</label><input id="gross-annual" type="number" min="0" step="1000" value={data.cashflow.grossAnnual} onChange={event => updateCashflow('grossAnnual', numberField(event.target.value))} /></div>
+                  <div className="field"><label htmlFor="take-home">Monthly take-home</label><input id="take-home" type="number" min="0" step="50" value={data.cashflow.takeHome} onChange={event => updateCashflow('takeHome', numberField(event.target.value))} /></div>
+                </div>
+                <div className="cashflow-notes"><div><strong>Student loan:</strong> the £750 here is your voluntary overpayment. The roughly £380 Plan 2 payroll repayment is already deducted before take-home.</div><div><strong>Pension:</strong> your roughly £1,000/month contribution is tracked separately in Assets, not deducted again here.</div></div>
+              </article>
+            </section>
+          </>}
+
+          {page === 'Goals' && <>
+            <div className="goal-layout">
+              <article className="panel"><div className="panel-head"><div><h2 className="panel-title">{data.goal.name} forecast</h2><p className="panel-caption">Illustrative growth using your monthly savings and expected return</p></div></div><div className="goal-chart-stat"><div className="big-number">{currency(goalProjected)}</div><div className="big-caption">Projected in {data.goal.years} years · target {currency(data.goal.target)}</div></div><GoalChart /><div className="chart-legend"><span><i className="legend-dot" />Projected savings</span><span><i className="legend-dot" style={{ background: '#d8b65e' }} />Goal amount</span></div><div className="projection-callout">{goalProjected >= data.goal.target ? <><strong>On track</strong> at the current monthly contribution</> : <>Projected shortfall <strong>{currency(data.goal.target - goalProjected)}</strong> at the end of this period</>}</div></article>
+              <article className="panel"><div className="panel-head"><div><h2 className="panel-title">Goal assumptions</h2><p className="panel-caption">Change any figure to explore a different plan</p></div></div><div className="goal-form">
+                <div className="field"><label htmlFor="goal-name">Goal name</label><input id="goal-name" value={data.goal.name} onChange={event => updateGoal('name', event.target.value)} /></div>
+                <div className="field"><label htmlFor="goal-target">Target amount</label><input id="goal-target" type="number" min="0" step="1000" value={data.goal.target} onChange={event => updateGoal('target', numberField(event.target.value))} /><span className="field-note">£60,000 is a planning placeholder; change it to your target.</span></div>
+                <div className="field"><label htmlFor="goal-saved">Already set aside</label><input id="goal-saved" type="number" min="0" step="100" value={data.goal.saved} onChange={event => updateGoal('saved', numberField(event.target.value))} /><span className="field-note">£9,071 Cash ISA after stoozing + £12,500 MMF + £12,800 LISA + £1,000 Premium Bonds. Earmarked here, not counted twice in net worth.</span></div>
+                <div className="field"><label htmlFor="goal-monthly">Current monthly contribution</label><input id="goal-monthly" type="number" min="0" step="50" value={data.goal.monthly} onChange={event => updateGoal('monthly', numberField(event.target.value))} /><span className="field-note">Assumes both £500 savings lines go toward this goal; excludes the planned extra £750/month after the student loan is cleared.</span></div>
+                <div className="field"><label htmlFor="goal-years">Time horizon (years)</label><input id="goal-years" type="number" min="1" max="30" step="1" value={data.goal.years} onChange={event => updateGoal('years', Math.max(1, Math.min(30, numberField(event.target.value))))} /></div>
+                <div className="field"><label htmlFor="goal-rate">Expected annual return (%)</label><input id="goal-rate" type="number" min="0" max="20" step="0.5" value={data.goal.rate} onChange={event => updateGoal('rate', numberField(event.target.value))} /><span className="field-note">Set to 0% until you choose a blended return assumption; actual returns vary.</span></div>
+              </div><div className="goal-insight">{yearsLabel}. This estimate compounds monthly contributions; it is not financial advice and does not account for inflation, fees or house-price changes.</div></article>
+            </div>
+            <div className="section-row"><h2>Other pots that can support your plans</h2><button className="text-button" onClick={() => setPage('Assets')}>View assets →</button></div><article className="panel"><AccountList assets={data.assets} debts={[]} /></article>
+          </>}
+        </main>
+        {editor && draft && <div className="overlay" onMouseDown={event => { if (event.target === event.currentTarget) setEditor(null); }}><form className="modal" onSubmit={saveEditor}><div className="modal-head"><div><h2>{editor.id ? 'Edit account' : editor.kind === 'debt' ? 'Add a debt' : 'Add an asset'}</h2><p>Balances are saved locally in this browser.</p></div><button type="button" className="close-button" aria-label="Close" onClick={() => setEditor(null)}>×</button></div>
+          <div className="modal-body"><div className="field"><label htmlFor="account-name">Account name</label><input id="account-name" required autoFocus value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} placeholder={editor.kind === 'debt' ? 'e.g. Student loan' : 'e.g. Cash ISA'} /></div>
+            <div className="field"><label htmlFor="account-category">Type</label><select id="account-category" value={draft.category} onChange={event => setDraft({ ...draft, category: event.target.value })}>{(editor.kind === 'debt' ? ['Student loan', 'Stoozing', 'Other debt'] : ['Cash', 'Money market', 'Stocks & shares', 'LISA', 'Pension', 'Property', 'Other']).map(item => <option key={item}>{item}</option>)}</select></div>
+            <div className="field"><label htmlFor="account-value">{editor.kind === 'debt' ? 'Outstanding balance (£)' : 'Current value (£)'}</label><input id="account-value" type="number" min="0" step="0.01" value={draft.value} onChange={event => setDraft({ ...draft, value: numberField(event.target.value) })} /></div>
+            <div className="field"><label htmlFor="account-monthly">{editor.kind === 'debt' ? 'Monthly repayment (£)' : 'Monthly contribution (£)'}</label><input id="account-monthly" type="number" min="0" step="10" value={draft.monthly} onChange={event => setDraft({ ...draft, monthly: numberField(event.target.value) })} /></div>
+            <div className="field"><label htmlFor="account-rate">{editor.kind === 'debt' ? 'Annual interest rate (%)' : 'Expected annual return (%)'}</label><input id="account-rate" type="number" min="0" max="50" step="0.1" value={draft.rate ?? ''} onChange={event => setDraft({ ...draft, rate: event.target.value === '' ? null : numberField(event.target.value) })} />{editor.kind === 'debt' && <span className="field-note">Leave blank if unknown; payoff estimate will be omitted.</span>}</div>
+          </div><div className="modal-footer">{editor.id ? <button type="button" className="button danger" onClick={removeEditorItem}>Remove</button> : <span /> }<div className="modal-actions"><button type="button" className="button" onClick={() => setEditor(null)}>Cancel</button><button type="submit" className="button primary">Save account</button></div></div></form></div>}
+      </div>;
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
